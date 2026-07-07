@@ -7,7 +7,7 @@ PREFIX  ?= /usr/local
 BINDIR   = $(PREFIX)/bin
 SHAREDIR = $(PREFIX)/share/tabrot
 
-.PHONY: all test lint install uninstall dist clean
+.PHONY: all test lint install uninstall dist deb clean
 
 all: test
 
@@ -32,6 +32,16 @@ uninstall:
 dist:
 	mkdir -p dist
 	git archive --format=tar.gz --prefix=tabrot-$(VERSION)/ -o dist/tabrot-$(VERSION).tar.gz HEAD
+
+deb:
+	@command -v dpkg-deb >/dev/null 2>&1 || { echo "make deb requires dpkg-deb (run on Debian/Ubuntu or in CI)." >&2; exit 1; }
+	rm -rf build/debroot
+	$(MAKE) install DESTDIR=build/debroot PREFIX=/usr
+	install -d build/debroot/DEBIAN build/debroot/usr/share/doc/tabrot
+	sed 's/{{VERSION}}/$(VERSION)/' packaging/deb/control.in > build/debroot/DEBIAN/control
+	install -m 0644 packaging/deb/copyright build/debroot/usr/share/doc/tabrot/copyright
+	mkdir -p dist
+	dpkg-deb --build --root-owner-group build/debroot dist/tabrot_$(VERSION)_all.deb
 
 clean:
 	rm -rf build dist
