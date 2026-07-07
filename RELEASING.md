@@ -1,6 +1,6 @@
 # Releasing tabrot
 
-1. Bump `TABROT_VERSION="X.Y.Z"` in `tabrot`. Commit.
+1. Bump `TABROT_VERSION="X.Y.Z"` in `tabrot` and the versioned deb example in README.md's Install section. Commit.
 2. `make test lint` — both green.
 3. Tag and push:
 

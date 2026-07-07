@@ -56,6 +56,7 @@ jobs:
 
       - name: render and push the formula
         run: |
+          set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           url="https://github.com/zcor/tabrot/releases/download/${GITHUB_REF_NAME}/tabrot-${version}.tar.gz"
           sha256="$(sha256sum "dist/tabrot-${version}.tar.gz" | awk '{print $1}')"

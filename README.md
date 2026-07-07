@@ -115,7 +115,9 @@ lives in `~/.tabrot` (override with `TABROT_HOME`). Run `tabrot paths` to
 see every location, including where the `TRIAGE.md` protocol is installed.
 
 **Upgrading from a pre-0.2 checkout?** Your data used to live inside the
-repo. Move it once:
+repo. Move it once — before your first 0.2 triage, or merge the files by
+hand (the `mv` would overwrite a ledger tabrot has already seeded and
+written to):
 
 ```bash
 mkdir -p ~/.tabrot/manifests ~/.tabrot/snapshots

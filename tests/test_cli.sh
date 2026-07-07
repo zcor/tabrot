@@ -13,6 +13,9 @@ TABROT_BIN="${TABROT_BIN:-$TESTS_DIR/../tabrot}"
 TMP_HOME="$(mktemp -d)"
 trap 'rm -rf "$TMP_HOME"' EXIT
 export TABROT_HOME="$TMP_HOME"
+# A TABROT_SHARE leaked from the caller's environment would bypass the
+# layout resolution this suite exists to verify — drop it.
+unset TABROT_SHARE
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
@@ -24,6 +27,8 @@ case "$out" in
 esac
 out2="$("$TABROT_BIN" --version)"
 [ "$out" = "$out2" ] || fail "--version output differs from version"
+out3="$("$TABROT_BIN" -v)"
+[ "$out" = "$out3" ] || fail "-v output differs from version"
 
 # version must not create the data home's contents
 [ ! -e "$TMP_HOME/manifests" ] || fail "version created data dirs"
@@ -51,6 +56,13 @@ templates="$(echo "$paths" | sed -n 's/^templates=//p')"
 "$TABROT_BIN" init demo >/dev/null 2>&1 && fail "second init should refuse to overwrite"
 list="$("$TABROT_BIN" list)"
 echo "$list" | grep -qx "demo" || fail "list does not show demo"
+
+# --- project-name guard -------------------------------------------------------
+# '../evil' must be rejected before any path is built; nothing may land in
+# the parent of $TMP_HOME/manifests (which is $TMP_HOME itself).
+"$TABROT_BIN" init ../evil >/dev/null 2>&1 && fail "init ../evil should exit nonzero"
+"$TABROT_BIN" open ../evil >/dev/null 2>&1 && fail "open ../evil should exit nonzero"
+[ ! -e "$TMP_HOME/evil.urls" ] || fail "traversal created evil.urls outside manifests/"
 
 # --- help / unknown command --------------------------------------------------
 "$TABROT_BIN" help >/dev/null || fail "help exited nonzero"

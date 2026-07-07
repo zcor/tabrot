@@ -7,7 +7,7 @@ PREFIX  ?= /usr/local
 BINDIR   = $(PREFIX)/bin
 SHAREDIR = $(PREFIX)/share/tabrot
 
-.PHONY: all test lint install uninstall dist deb clean
+.PHONY: all test lint install uninstall check-version dist deb clean
 
 all: test
 
@@ -29,11 +29,16 @@ uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/tabrot"
 	rm -rf "$(DESTDIR)$(SHAREDIR)"
 
-dist:
+# Guard for version-consuming targets: fail loudly if the TABROT_VERSION
+# line in ./tabrot drifted and the sed extraction came up empty.
+check-version:
+	@test -n "$(VERSION)" || { echo "Makefile: could not extract TABROT_VERSION from tabrot" >&2; exit 1; }
+
+dist: check-version
 	mkdir -p dist
 	git archive --format=tar.gz --prefix=tabrot-$(VERSION)/ -o dist/tabrot-$(VERSION).tar.gz HEAD
 
-deb:
+deb: check-version
 	@command -v dpkg-deb >/dev/null 2>&1 || { echo "make deb requires dpkg-deb (run on Debian/Ubuntu or in CI)." >&2; exit 1; }
 	rm -rf build/debroot
 	$(MAKE) install DESTDIR=build/debroot PREFIX=/usr

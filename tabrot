@@ -47,6 +47,18 @@ need_python() {
   fi
 }
 
+# Reject project names that could escape $MANIFESTS ('/' path separators,
+# '..' traversal) before any path is built from them. Used by open and init.
+validate_project_name() {
+  local project="$1"
+  case "$project" in
+    */*|*..*)
+      echo "tabrot: invalid project name '$project' (no '/' or '..' allowed)" >&2
+      exit 1
+      ;;
+  esac
+}
+
 # Locate the parser, TRIAGE.md, and templates. Three layouts, first match
 # wins: an explicit $TABROT_SHARE (flat directory holding all three); a git
 # checkout (this script sitting next to src/); an installed prefix (this
@@ -85,7 +97,7 @@ ensure_home() {
   if [ ! -f "$PARKED" ]; then
     if [ -f "$TEMPLATES/PARKED.template.md" ]; then
       cp "$TEMPLATES/PARKED.template.md" "$PARKED"
-      echo "Seeded ledger: $PARKED"
+      echo "Seeded ledger: $PARKED" >&2
     else
       echo "tabrot: warning: no PARKED template at $TEMPLATES/PARKED.template.md — ledger not seeded." >&2
     fi
@@ -163,6 +175,7 @@ cmd_open() {
     echo "usage: tabrot open <project>" >&2
     exit 1
   fi
+  validate_project_name "$project"
   local manifest="$MANIFESTS/$project.urls"
   if [ ! -f "$manifest" ]; then
     echo "tabrot: no manifest at $manifest" >&2
@@ -218,6 +231,7 @@ cmd_init() {
     echo "usage: tabrot init <project>" >&2
     exit 1
   fi
+  validate_project_name "$project"
   local manifest="$MANIFESTS/$project.urls"
   if [ -f "$manifest" ]; then
     echo "tabrot: manifest already exists at $manifest (not overwriting)" >&2
