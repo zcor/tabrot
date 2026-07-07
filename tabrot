@@ -2,20 +2,41 @@
 # tabrot — browser-tab triage/launcher CLI. See README.md for the protocol.
 set -euo pipefail
 
+TABROT_VERSION="0.2.0"
+
+# Where this script lives. Symlinks are deliberately NOT resolved: Homebrew,
+# dpkg, and `make install` all place bin/ and share/tabrot/ under the same
+# prefix, so prefix-sibling resolution works through the bin symlink, and
+# `readlink -f` is not portable to macOS bash 3.2 anyway. TABROT_SHARE is
+# the escape hatch for layouts this cannot see.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SNAPSHOTS="$DIR/snapshots"
-MANIFESTS="$DIR/manifests"
-PARSER="$DIR/src/snss_tabs.py"
+
+# User data home — everything tabrot writes lives here, never in the repo
+# or the install prefix.
+TABROT_HOME="${TABROT_HOME:-$HOME/.tabrot}"
+SNAPSHOTS="$TABROT_HOME/snapshots"
+MANIFESTS="$TABROT_HOME/manifests"
+PARKED="$TABROT_HOME/PARKED.md"
+
+# Code assets (parser, protocol, templates) — set by resolve_share().
+SHARE=""
+PARSER=""
+TRIAGE=""
+TEMPLATES=""
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 usage: tabrot <command> [args]
 
 commands:
-  snapshot            exhume every window/tab from your browser's session file
-  open <project>       open manifests/<project>.urls in a new browser window
-  init <project>        create a new manifest from a commented template
-  list                  list available manifests
+  snapshot          exhume every window/tab from your browser's session file
+  open <project>    open <project>'s manifest in a new browser window
+  init <project>    create a new manifest from a commented template
+  list              list available manifests
+  paths             print every path tabrot uses (key=value, one per line)
+  version           print tabrot's version
+
+data lives in $TABROT_HOME (override with TABROT_HOME).
 EOF
 }
 
@@ -26,20 +47,81 @@ need_python() {
   fi
 }
 
+# Locate the parser, TRIAGE.md, and templates. Three layouts, first match
+# wins: an explicit $TABROT_SHARE (flat directory holding all three); a git
+# checkout (this script sitting next to src/); an installed prefix (this
+# script in <prefix>/bin, assets in <prefix>/share/tabrot).
+resolve_share() {
+  if [ -n "${TABROT_SHARE:-}" ]; then
+    SHARE="$TABROT_SHARE"
+    PARSER="$SHARE/snss_tabs.py"
+    TRIAGE="$SHARE/TRIAGE.md"
+    TEMPLATES="$SHARE/templates"
+  elif [ -f "$DIR/src/snss_tabs.py" ]; then
+    SHARE="$DIR"
+    PARSER="$DIR/src/snss_tabs.py"
+    TRIAGE="$DIR/TRIAGE.md"
+    TEMPLATES="$DIR/templates"
+  elif [ -f "$DIR/../share/tabrot/snss_tabs.py" ]; then
+    SHARE="$(cd "$DIR/../share/tabrot" && pwd)"
+    PARSER="$SHARE/snss_tabs.py"
+    TRIAGE="$SHARE/TRIAGE.md"
+    TEMPLATES="$SHARE/templates"
+  fi
+  if [ ! -f "$PARSER" ]; then
+    echo "tabrot: cannot locate tabrot's code assets (snss_tabs.py)." >&2
+    echo "  tried: \$TABROT_SHARE (${TABROT_SHARE:-unset}), $DIR/src/, $DIR/../share/tabrot/" >&2
+    echo "  reinstall tabrot, or point TABROT_SHARE at a directory containing" >&2
+    echo "  snss_tabs.py, TRIAGE.md, and templates/." >&2
+    exit 1
+  fi
+}
+
+# Create the data home on demand and seed the ledger from the template on
+# first use. Runs only for data-touching commands (snapshot/open/init/list);
+# version, paths, and help make no filesystem changes.
+ensure_home() {
+  mkdir -p "$SNAPSHOTS" "$MANIFESTS"
+  if [ ! -f "$PARKED" ]; then
+    if [ -f "$TEMPLATES/PARKED.template.md" ]; then
+      cp "$TEMPLATES/PARKED.template.md" "$PARKED"
+      echo "Seeded ledger: $PARKED"
+    else
+      echo "tabrot: warning: no PARKED template at $TEMPLATES/PARKED.template.md — ledger not seeded." >&2
+    fi
+  fi
+}
+
+cmd_version() {
+  echo "tabrot $TABROT_VERSION"
+}
+
+cmd_paths() {
+  cat <<EOF
+home=$TABROT_HOME
+manifests=$MANIFESTS
+snapshots=$SNAPSHOTS
+parked=$PARKED
+share=$SHARE
+parser=$PARSER
+triage=$TRIAGE
+templates=$TEMPLATES
+EOF
+}
+
 cmd_snapshot() {
   need_python
-  mkdir -p "$SNAPSHOTS"
-  local out="$SNAPSHOTS/$(date +%Y-%m-%d).txt"
-  if ! python3 "$PARSER" > "$out" 2>/tmp/tabrot_snapshot_err.$$; then
-    cat /tmp/tabrot_snapshot_err.$$ >&2
-    rm -f /tmp/tabrot_snapshot_err.$$
-    rm -f "$out"
+  local out errfile count
+  out="$SNAPSHOTS/$(date +%Y-%m-%d).txt"
+  errfile="$(mktemp)"
+  if ! python3 "$PARSER" > "$out" 2>"$errfile"; then
+    cat "$errfile" >&2
+    rm -f "$errfile" "$out"
     echo "tabrot: snapshot failed — could not read a browser session file." >&2
     exit 1
   fi
-  cat /tmp/tabrot_snapshot_err.$$ >&2
-  rm -f /tmp/tabrot_snapshot_err.$$
-  local count
+  cat "$errfile" >&2
+  rm -f "$errfile"
   count=$(grep -c '|||' "$out" || true)
   echo "Snapshot: $out ($count tabs)"
 }
@@ -119,7 +201,6 @@ cmd_open() {
 }
 
 cmd_list() {
-  mkdir -p "$MANIFESTS"
   local found=0
   for f in "$MANIFESTS"/*.urls; do
     [ -e "$f" ] || continue
@@ -137,7 +218,6 @@ cmd_init() {
     echo "usage: tabrot init <project>" >&2
     exit 1
   fi
-  mkdir -p "$MANIFESTS"
   local manifest="$MANIFESTS/$project.urls"
   if [ -f "$manifest" ]; then
     echo "tabrot: manifest already exists at $manifest (not overwriting)" >&2
@@ -161,11 +241,21 @@ main() {
   local command="${1:-help}"
   [ $# -gt 0 ] && shift || true
   case "$command" in
-    snapshot) cmd_snapshot "$@" ;;
-    open) cmd_open "$@" ;;
-    list) cmd_list "$@" ;;
-    init) cmd_init "$@" ;;
-    help|-h|--help) usage ;;
+    version|--version|-v)
+      cmd_version
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    paths)
+      resolve_share
+      cmd_paths
+      ;;
+    snapshot|open|list|init)
+      resolve_share
+      ensure_home
+      "cmd_$command" "$@"
+      ;;
     *)
       echo "tabrot: unknown command '$command'" >&2
       usage >&2
