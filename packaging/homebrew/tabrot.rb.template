@@ -1,0 +1,18 @@
+class Tabrot < Formula
+  desc "Browser-tab triage and launcher CLI"
+  homepage "https://github.com/zcor/tabrot"
+  url "{{URL}}"
+  sha256 "{{SHA256}}"
+  license "MIT"
+
+  def install
+    bin.install "tabrot"
+    pkgshare.install "src/snss_tabs.py" => "snss_tabs.py"
+    pkgshare.install "TRIAGE.md"
+    pkgshare.install "templates"
+  end
+
+  test do
+    assert_match "tabrot #{version}", shell_output("#{bin}/tabrot version")
+  end
+end
