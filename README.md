@@ -74,17 +74,59 @@ Ten of twelve windows closed that afternoon. Nothing was lost. The patient repor
 
 It took one of the most advanced reasoning systems ever constructed to close one man's browser tabs. **It should not have to take yours.** The workflow is now this repository.
 
-## Quickstart
+## Install
+
+**Homebrew (macOS or Linux):**
+
+```bash
+brew install zcor/tabrot/tabrot
+```
+
+**Debian/Ubuntu:** grab the `.deb` from the [latest release](https://github.com/zcor/tabrot/releases/latest):
+
+```bash
+sudo apt install ./tabrot_0.2.0_all.deb
+```
+
+**From source:**
 
 ```bash
 git clone https://github.com/zcor/tabrot && cd tabrot
-./tabrot snapshot                 # exhume
-# feed snapshots/<date>.txt + TRIAGE.md to your LLM of choice; file the verdicts
-./tabrot init work                # create a manifest from your PIN verdicts
-./tabrot open work                # resurrection on demand
+sudo make install        # PREFIX=/usr/local by default; DESTDIR supported
 ```
 
+No install required either — `./tabrot` works straight from the clone.
+
 Requirements: macOS or Linux, Python 3 (stdlib only), a Chromium-family browser, and the courage to be free.
+
+## Quickstart
+
+```bash
+tabrot snapshot                  # exhume
+# feed the snapshot + TRIAGE.md to your LLM of choice; file the verdicts
+tabrot init work                 # create a manifest from your PIN verdicts
+tabrot open work                 # resurrection on demand
+```
+
+### Where your data lives
+
+Everything tabrot writes — manifests, snapshots, your `PARKED.md` ledger —
+lives in `~/.tabrot` (override with `TABROT_HOME`). Run `tabrot paths` to
+see every location, including where the `TRIAGE.md` protocol is installed.
+
+**Upgrading from a pre-0.2 checkout?** Your data used to live inside the
+repo. Move it once — before your first 0.2 triage, or merge the files by
+hand (the `mv` would overwrite a ledger tabrot has already seeded and
+written to):
+
+```bash
+mkdir -p ~/.tabrot/manifests ~/.tabrot/snapshots
+mv manifests/*.urls ~/.tabrot/manifests/ 2>/dev/null || true
+mv snapshots/*.txt ~/.tabrot/snapshots/ 2>/dev/null || true
+mv PARKED.md ~/.tabrot/ 2>/dev/null || true
+```
+
+(`manifests/examples/` stays in the repo — it's documentation.)
 
 ## Philosophy
 

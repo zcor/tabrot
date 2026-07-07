@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: verify tag matches script version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          script="$(sed -n 's/^TABROT_VERSION="\(.*\)"/\1/p' tabrot)"
+          if [ "$tag" != "$script" ]; then
+            echo "tag v$tag does not match TABROT_VERSION=$script in tabrot" >&2
+            exit 1
+          fi
+
+      - name: install build/test tooling
+        run: sudo apt-get update && sudo apt-get install -y shellcheck lintian
+
+      - name: lint and test
+        run: make lint test
+
+      - name: build artifacts
+        run: make dist deb
+
+      - name: lintian (advisory)
+        run: lintian dist/tabrot_*_all.deb || echo "lintian findings above are advisory — triage, do not block"
+
+      - name: smoke-test the installed deb
+        run: |
+          sudo apt install -y ./dist/tabrot_*_all.deb
+          tabrot version
+          tabrot paths
+
+      - name: create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/tabrot-*.tar.gz dist/tabrot_*_all.deb \
+            --title "tabrot $GITHUB_REF_NAME" --generate-notes
+
+      - name: check out the tap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: zcor/homebrew-tabrot
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: tap
+
+      - name: render and push the formula
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          url="https://github.com/zcor/tabrot/releases/download/${GITHUB_REF_NAME}/tabrot-${version}.tar.gz"
+          sha256="$(sha256sum "dist/tabrot-${version}.tar.gz" | awk '{print $1}')"
+          mkdir -p tap/Formula
+          sed -e "s|{{URL}}|${url}|" -e "s|{{SHA256}}|${sha256}|" \
+            packaging/homebrew/tabrot.rb.template > tap/Formula/tabrot.rb
+          cd tap
+          git config user.name "tabrot-release"
+          git config user.email "zcor@users.noreply.github.com"
+          git add Formula/tabrot.rb
+          git commit -m "tabrot ${version}"
+          git push

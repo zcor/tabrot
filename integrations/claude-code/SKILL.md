@@ -15,15 +15,17 @@ append PIN lines to their manifests, the way the protocol specifies.
 1. **Snapshot.** Run the installed tool to exhume the current tab state:
 
    ```bash
-   ./tabrot snapshot
+   tabrot snapshot
    ```
 
-   (If `tabrot` isn't on PATH or isn't in the current directory, ask the
-   user where it's installed, or look for a `tabrot` script at the repo
-   root of wherever they point you.) This reads the browser's session
-   files directly off disk — nothing is sent anywhere by this step.
+   (If `tabrot` isn't on PATH, ask the user where it lives — a checkout's
+   `./tabrot` works identically.) This reads the browser's session files
+   directly off disk — nothing is sent anywhere by this step. The command
+   prints where the snapshot landed; `tabrot paths` prints every location
+   tabrot uses (`snapshots=`, `parked=`, `manifests=`, `triage=`, ...) —
+   use it instead of guessing paths anywhere in this skill.
 
-2. **Read the protocol.** Read `TRIAGE.md` from this tabrot checkout in
+2. **Read the protocol.** Read the file at `tabrot paths`' `triage=` key in
    full before triaging anything. It defines the four verdicts (JUNK /
    PARK / PIN / TODO), the exact output format for each, and the rules —
    including the JUNK-vs-PARK tiebreak, deduping, and the SECURITY rule
@@ -44,13 +46,14 @@ append PIN lines to their manifests, the way the protocol specifies.
      tabs better than the model does.
 
 4. **File the results.**
-   - Append PARK lines to the user's `PARKED.md` (create it from
-     `templates/PARKED.template.md` if it doesn't exist yet). Append,
+   - Append PARK lines to the user's ledger at `tabrot paths`' `parked=`
+     location (tabrot seeds it from the template on first use). Append,
      don't overwrite — this is a ledger, not a scratch buffer.
-   - Append PIN lines to the relevant project manifest(s) under whatever
-     directory the user keeps manifests in (e.g. `work.urls`,
-     `personal.urls`), grouped as TRIAGE.md specifies. If a suggested
-     project doesn't have a manifest yet, ask before creating one.
+   - Append PIN lines to the relevant project manifest(s) in the
+     `manifests=` directory (e.g. `work.urls`, `personal.urls`), grouped
+     as TRIAGE.md specifies. If a suggested project doesn't have a
+     manifest yet, ask before creating one (`tabrot init <project>`
+     creates it properly).
    - Surface TODOs as a plain checklist in the chat — don't silently file
      these into some other system unless the user has one and asks you to.
 
@@ -72,6 +75,7 @@ Claude Code will pick it up on the next session. It triggers on phrasing
 like "close my tabs," "tab cleanup," "I have too many tabs open," or
 "tabrot," so you don't need to invoke it by exact name.
 
-This skill assumes a working `tabrot` checkout is reachable (either on
-PATH or at a path the user gives you) so it can run `tabrot snapshot` and
-read `TRIAGE.md`. It does not vendor either — it drives the real repo.
+This skill assumes `tabrot` is installed (brew, deb, or `make install`) or
+a checkout is reachable, and locates everything else — protocol, ledger,
+manifests — via `tabrot paths`. It vendors nothing; it drives the real
+tool.

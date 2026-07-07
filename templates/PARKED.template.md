@@ -5,10 +5,12 @@ gets exactly one line here — not because you're going to read it again
 tomorrow, but because a tab you closed with nowhere to go is amnesia, and a
 tab you parked with context attached is just... filed.
 
-Copy this file to the root of wherever you run `tabrot` from (or wherever you
-want your real ledger to live) and rename it `PARKED.md`. `.gitignore` in this
-repo already excludes your real `PARKED.md` — this template is the only copy
-that belongs in version control.
+You don't need to copy this by hand: the first data-touching `tabrot`
+command seeds it to `~/.tabrot/PARKED.md` for you (`tabrot paths` prints
+the exact location, and `TABROT_HOME` moves it). Your real ledger lives
+there — outside any repo, which is exactly where a file full of your own
+browsing context belongs. This template is the only copy that belongs in
+version control.
 
 ## Format
 

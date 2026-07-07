@@ -1,0 +1,14 @@
+Package: tabrot
+Version: {{VERSION}}
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: zcor <zcor@users.noreply.github.com>
+Depends: bash, python3
+Homepage: https://github.com/zcor/tabrot
+Description: browser-tab triage and launcher CLI
+ Reads every open window and tab straight from a Chromium-family
+ browser's session files on disk, supports a plain-markdown LLM triage
+ protocol (JUNK/PARK/PIN/TODO), and reopens curated URL manifests in
+ fresh browser windows. Plain text, local-only, no runtime dependencies
+ beyond bash and python3.
