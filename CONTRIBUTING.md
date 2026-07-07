@@ -31,6 +31,11 @@ neither does the cure — patches welcome.
   test — someone else's 400-tab fever dream will find the edge case you
   didn't.
 
+- **Run the suite.** `make test` runs the parser tests and the CLI smoke
+  test; `make lint` runs shellcheck. Both must pass before a PR. Neither
+  needs a browser, real session files, or anything beyond bash, python3,
+  and shellcheck.
+
 - **Keep the protocol in `TRIAGE.md` the source of truth.** If you're
   changing triage behavior, update `TRIAGE.md` first and make the code
   match it, not the other way around — the protocol is meant to be
