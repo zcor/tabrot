@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: ensure shellcheck
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              brew install shellcheck
+            else
+              sudo apt-get update && sudo apt-get install -y shellcheck
+            fi
+          fi
+
+      - name: lint
+        run: make lint
+
+      - name: test (checkout layout)
+        run: make test
+
+      - name: test (installed layout)
+        run: |
+          make install DESTDIR="$PWD/build/fakeroot" PREFIX=/usr
+          TABROT_BIN="$PWD/build/fakeroot/usr/bin/tabrot" tests/test_cli.sh
