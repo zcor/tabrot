@@ -1,0 +1,177 @@
+#!/bin/bash
+# tabrot — browser-tab triage/launcher CLI. See README.md for the protocol.
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SNAPSHOTS="$DIR/snapshots"
+MANIFESTS="$DIR/manifests"
+PARSER="$DIR/src/snss_tabs.py"
+
+usage() {
+  cat <<'EOF'
+usage: tabrot <command> [args]
+
+commands:
+  snapshot            exhume every window/tab from your browser's session file
+  open <project>       open manifests/<project>.urls in a new browser window
+  init <project>        create a new manifest from a commented template
+  list                  list available manifests
+EOF
+}
+
+need_python() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "tabrot: python3 is required but was not found on PATH." >&2
+    exit 1
+  fi
+}
+
+cmd_snapshot() {
+  need_python
+  mkdir -p "$SNAPSHOTS"
+  local out="$SNAPSHOTS/$(date +%Y-%m-%d).txt"
+  if ! python3 "$PARSER" > "$out" 2>/tmp/tabrot_snapshot_err.$$; then
+    cat /tmp/tabrot_snapshot_err.$$ >&2
+    rm -f /tmp/tabrot_snapshot_err.$$
+    rm -f "$out"
+    echo "tabrot: snapshot failed — could not read a browser session file." >&2
+    exit 1
+  fi
+  cat /tmp/tabrot_snapshot_err.$$ >&2
+  rm -f /tmp/tabrot_snapshot_err.$$
+  local count
+  count=$(grep -c '|||' "$out" || true)
+  echo "Snapshot: $out ($count tabs)"
+}
+
+# Find a Chromium-family browser binary to open windows with.
+# Prints "kind:binary" on stdout: kind is "mac-app" (use `open -na "<name>"`)
+# or "linux-bin" (invoke the binary directly).
+detect_browser() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    local apps=(
+      "Brave Browser"
+      "Google Chrome"
+      "Chromium"
+      "Microsoft Edge"
+      "Arc"
+    )
+    for app in "${apps[@]}"; do
+      if [ -d "/Applications/$app.app" ]; then
+        echo "mac-app:$app"
+        return 0
+      fi
+    done
+    return 1
+  else
+    local bins=(brave-browser brave google-chrome chromium chromium-browser microsoft-edge)
+    for bin in "${bins[@]}"; do
+      if command -v "$bin" >/dev/null 2>&1; then
+        echo "linux-bin:$bin"
+        return 0
+      fi
+    done
+    return 1
+  fi
+}
+
+cmd_open() {
+  local project="${1:-}"
+  if [ -z "$project" ]; then
+    echo "usage: tabrot open <project>" >&2
+    exit 1
+  fi
+  local manifest="$MANIFESTS/$project.urls"
+  if [ ! -f "$manifest" ]; then
+    echo "tabrot: no manifest at $manifest" >&2
+    echo "tip: run 'tabrot init $project' to create one, or 'tabrot list' to see what exists." >&2
+    exit 1
+  fi
+
+  local urls=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="$(echo "$line" | xargs || true)"
+    [ -n "$line" ] && urls+=("$line")
+  done < "$manifest"
+
+  if [ "${#urls[@]}" -eq 0 ]; then
+    echo "tabrot: manifest $manifest has no URLs (only comments/blank lines)." >&2
+    exit 1
+  fi
+
+  local detected
+  if ! detected="$(detect_browser)"; then
+    echo "tabrot: could not find a Chromium-family browser installed." >&2
+    exit 1
+  fi
+  local kind="${detected%%:*}"
+  local target="${detected#*:}"
+
+  if [ "$kind" = "mac-app" ]; then
+    open -na "$target" --args --new-window "${urls[@]}"
+  else
+    "$target" --new-window "${urls[@]}" >/dev/null 2>&1 &
+    disown || true
+  fi
+
+  echo "Opened ${#urls[@]} tabs for $project"
+}
+
+cmd_list() {
+  mkdir -p "$MANIFESTS"
+  local found=0
+  for f in "$MANIFESTS"/*.urls; do
+    [ -e "$f" ] || continue
+    found=1
+    basename "$f" .urls
+  done
+  if [ "$found" -eq 0 ]; then
+    echo "No manifests yet. Create one with: tabrot init <project>"
+  fi
+}
+
+cmd_init() {
+  local project="${1:-}"
+  if [ -z "$project" ]; then
+    echo "usage: tabrot init <project>" >&2
+    exit 1
+  fi
+  mkdir -p "$MANIFESTS"
+  local manifest="$MANIFESTS/$project.urls"
+  if [ -f "$manifest" ]; then
+    echo "tabrot: manifest already exists at $manifest (not overwriting)" >&2
+    exit 1
+  fi
+  cat > "$manifest" <<EOF
+# manifest: $project
+# One URL per line. Everything after # is a comment. Blank lines are ignored.
+# 'tabrot open $project' opens every URL below in a fresh browser window.
+#
+# Tip: append /u/N to a Google URL to force a specific signed-in account,
+# e.g. https://mail.google.com/mail/u/0/ instead of the ambiguous default.
+
+# https://example.com/dashboard  # example — replace with your real links
+EOF
+  echo "Created manifest: $manifest"
+  echo "Edit it, then run: tabrot open $project"
+}
+
+main() {
+  local command="${1:-help}"
+  [ $# -gt 0 ] && shift || true
+  case "$command" in
+    snapshot) cmd_snapshot "$@" ;;
+    open) cmd_open "$@" ;;
+    list) cmd_list "$@" ;;
+    init) cmd_init "$@" ;;
+    help|-h|--help) usage ;;
+    *)
+      echo "tabrot: unknown command '$command'" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

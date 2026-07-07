@@ -1,0 +1,32 @@
+# manifests/examples/personal.urls
+#
+# Example manifest for `tabrot open personal`. This is a PLACEHOLDER — copy
+# the format, not the URLs. Your real manifest lives at the repo root (or
+# wherever you run `tabrot` from) as `personal.urls`; see .gitignore, which
+# keeps your real manifests out of version control but leaves this example
+# checked in.
+#
+# FORMAT
+#   One URL per line, optionally followed by "  #" and a comment.
+#   Blank lines and lines starting with "#" are ignored.
+#
+#   <url>  # <comment>
+#
+# THE /u/N TRICK (see manifests/examples/work.urls for the full writeup)
+#
+# Same deal, personal side: the index is assigned by sign-in order in this
+# browser profile and can shift if you re-authenticate. Fictional mapping
+# used below, for THIS profile:
+#
+#   index 0 -> personal everyday account   (you@example.com)
+#   index 1 -> household/shared account    (household@example.com)
+#   index 2 -> old account kept for archives (oldhandle@example.com)
+
+https://mail.google.com/mail/u/0/  # personal inbox
+https://mail.google.com/mail/u/1/  # household shared inbox — index 1 on this profile
+https://calendar.google.com/calendar/u/1/r  # household calendar, same account as above
+https://drive.google.com/drive/u/2/  # old archive account — index 2, rarely used but don't want to lose the mapping
+
+https://www.example-bank.com/accounts  # bank login landing
+https://photos.google.com/u/0/  # personal photos, index 0
+https://www.wikipedia.org/  # because apparently we still need this open at all times

@@ -1,0 +1,20 @@
+# Real snapshots contain a user's actual tab titles/URLs — never commit them.
+snapshots/*
+!snapshots/.gitkeep
+
+# Real manifests contain a user's actual project links — never commit them.
+# Example manifests are the exception; they're the documentation.
+manifests/*.urls
+!manifests/examples/
+
+# The real parked-links ledger contains a user's actual browsing history
+# and context — never commit it. templates/PARKED.template.md is the
+# checked-in stand-in.
+PARKED.md
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

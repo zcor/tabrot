@@ -1,0 +1,54 @@
+# manifests/examples/work.urls
+#
+# Example manifest for `tabrot open work`. This is a PLACEHOLDER — copy the
+# format, not the URLs. Your real manifest lives at the repo root (or
+# wherever you run `tabrot` from) as `work.urls`; see .gitignore, which
+# keeps your real manifests out of version control but leaves this example
+# checked in.
+#
+# FORMAT
+#   One URL per line, optionally followed by "  #" and a comment.
+#   Blank lines and lines starting with "#" are ignored.
+#
+#   <url>  # <comment>
+#
+# `tabrot open work` opens every non-comment line in this file as a tab in
+# a fresh window. That's the entire launcher. No config, no JSON, just a
+# flat list you can edit in any editor or grep from a script.
+#
+# THE /u/N TRICK
+#
+# Google properties (Gmail, Calendar, Drive, Search Console, Analytics,
+# Docs, etc.) all honor a "/u/N/" segment in the URL path that picks WHICH
+# signed-in Google account the link opens against, by index — 0 is
+# whichever account you signed into that browser profile first, 1 is the
+# second, and so on. Bake the right index into the manifest and you land
+# logged into the correct account instead of guessing at the account
+# switcher every single time.
+#
+#   https://mail.google.com/mail/u/2/          -> Gmail, 3rd signed-in account (0-indexed)
+#   https://drive.google.com/drive/u/1/         -> Drive, 2nd signed-in account
+#   https://calendar.google.com/calendar/u/0/r  -> Calendar, 1st signed-in account
+#
+# THE CATCH: these indices are assigned by *sign-in order in that browser
+# profile*, not by anything stable like account name or email. Sign out
+# and back in, add a new account, or use a different machine/profile, and
+# every index can shift. When that happens, re-derive the mapping once
+# (open the account switcher, count top to bottom starting at 0) and
+# update the URLs below — it's a five-minute fix, not a re-architecture.
+#
+# Fictional mapping used in the examples below, for THIS profile, as of
+# whenever you last checked:
+#
+#   index 0 -> primary work account      (you@yourcompany.com)
+#   index 1 -> shared team account       (team-shared@yourcompany.com)
+#   index 2 -> client-facing account     (you@clientdomain.example)
+
+https://mail.google.com/mail/u/0/  # inbox, primary work account
+https://calendar.google.com/calendar/u/0/r  # calendar, primary work account
+https://mail.google.com/mail/u/1/  # shared team inbox — index 1 on this profile
+https://drive.google.com/drive/u/2/  # client Drive — index 2, client-facing account
+
+https://search.google.com/search-console?resource_id=sc-domain:yourcompany.com  # Search Console, yourcompany.com property
+https://github.com/yourorg/yourrepo/pulls  # PR queue
+https://example-project-tracker.example.com/board/42  # sprint board
