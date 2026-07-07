@@ -253,7 +253,7 @@ EOF
 
 main() {
   local command="${1:-help}"
-  [ $# -gt 0 ] && shift || true
+  if [ $# -gt 0 ]; then shift; fi
   case "$command" in
     version|--version|-v)
       cmd_version
